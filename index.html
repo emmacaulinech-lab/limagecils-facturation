@@ -1578,16 +1578,82 @@ function selectPickerCat(catId) {
     el.style.fontWeight = el.dataset.cat === catId ? '600' : '';
   });
   const prods = _pickerCategoryData[catId] || [];
+  const selected = window._pickerSelected || {};
   document.getElementById('picker-products').innerHTML = prods.length === 0
     ? '<div style="color:var(--text-muted);font-size:13px;padding:16px;text-align:center;">Aucun produit</div>'
     : prods.map(p => `
-      <div onclick="pickerSelectProduct(${p.idx})" style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background 0.15s;" onmouseover="this.style.background='rgba(244,114,160,0.08)'" onmouseout="this.style.background=''">
-        <div style="font-size:12px;color:var(--gold-dark);font-weight:600;font-family:monospace;">${p.ref}</div>
-        <div style="font-size:13px;color:var(--text);">${p.nom}</div>
-        <div style="font-size:12px;color:var(--text-muted);">${fmt(p.ttc)}</div>
+      <div onclick="togglePickerProduct(${p.idx})" id="picker-prod-${p.idx}"
+        style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:10px;transition:background 0.15s;background:${selected[p.idx] ? 'rgba(244,114,160,0.1)' : ''}">
+        <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${selected[p.idx] ? '#F472A0' : 'var(--border)'};background:${selected[p.idx] ? '#F472A0' : 'white'};flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          ${selected[p.idx] ? '<span style="color:white;font-size:11px;font-weight:bold;">✓</span>' : ''}
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--gold-dark);font-weight:600;font-family:monospace;">${p.ref}</div>
+          <div style="font-size:13px;color:var(--text);">${p.nom}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${fmt(p.ttc)}</div>
+        </div>
       </div>`).join('');
 }
 
+function togglePickerProduct(idx) {
+  const selected = window._pickerSelected;
+  if (selected[idx]) {
+    delete selected[idx];
+  } else {
+    selected[idx] = { idx, qte: 1 };
+  }
+  // Refresh current category view
+  const activeCat = document.querySelector('.picker-cat-item[style*="rgb(244"]');
+  if (activeCat) selectPickerCat(activeCat.dataset.cat);
+
+  // Update selection bar
+  const keys = Object.keys(selected);
+  const bar = document.getElementById('picker-selection-bar');
+  const count = document.getElementById('picker-selected-count');
+  const list = document.getElementById('picker-selected-list');
+  if (!bar) return;
+
+  if (keys.length === 0) {
+    bar.style.display = 'none';
+    return;
+  }
+
+  bar.style.display = '';
+  count.textContent = keys.length + ' produit' + (keys.length > 1 ? 's' : '') + ' sélectionné' + (keys.length > 1 ? 's' : '');
+  list.innerHTML = keys.map(k => {
+    const p = catalogue[parseInt(k)];
+    return `<div style="background:rgba(244,114,160,0.12);border:1px solid rgba(244,114,160,0.3);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--gold-dark);display:flex;align-items:center;gap:6px;">
+      ${p.nom}
+      <span onclick="event.stopPropagation();togglePickerProduct(${k})" style="cursor:pointer;color:var(--red);font-weight:bold;">✕</span>
+    </div>`;
+  }).join('');
+}
+
+function pickerConfirmMulti(mode, startIdx) {
+  const selected = window._pickerSelected;
+  const keys = Object.keys(selected);
+  if (keys.length === 0) return;
+
+  if (mode === 'new') {
+    // Remove the placeholder line that triggered the picker
+    currentLines.splice(startIdx, 1);
+    keys.forEach(k => {
+      const p = catalogue[parseInt(k)];
+      currentLines.push({ ref: p.ref, nom: p.nom, ht: p.ht, qte: 1 });
+    });
+    document.getElementById('product-picker-modal').remove();
+    renderLines();
+  } else {
+    editLines.splice(startIdx, 1);
+    keys.forEach(k => {
+      const p = catalogue[parseInt(k)];
+      editLines.push({ ref: p.ref, nom: p.nom, ht: p.ht, qte: 1 });
+    });
+    document.getElementById('product-picker-modal').remove();
+    renderEditLines();
+  }
+}
+  
 function pickerSelectProduct(idx) {
   if (_pickerCallback) _pickerCallback(idx);
 }
@@ -1663,42 +1729,55 @@ function addLine() {
 }
 
 function openProductPicker(lineIdx, mode) {
-  // Remove existing picker
   const existing = document.getElementById('product-picker-modal');
   if (existing) existing.remove();
 
-  initPicker((prodIdx) => {
-    const p = catalogue[prodIdx];
-    if (mode === 'new') {
-      currentLines[lineIdx].ref = p.ref;
-      currentLines[lineIdx].nom = p.nom;
-      currentLines[lineIdx].ht = p.ht;
-    } else {
-      editLines[lineIdx].ref = p.ref;
-      editLines[lineIdx].nom = p.nom;
-      editLines[lineIdx].ht = p.ht;
-    }
-    document.getElementById('product-picker-modal').remove();
-    if (mode === 'new') renderLines();
-    else renderEditLines();
-  });
+  initPicker(null);
+
+  // Multi-select state
+  const selected = {};
 
   const picker = document.createElement('div');
   picker.id = 'product-picker-modal';
   picker.style.cssText = 'position:fixed;inset:0;background:rgba(44,31,22,0.5);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center;';
   picker.innerHTML = `
-    <div style="background:var(--warm-white);border-radius:14px;width:500px;max-width:95vw;box-shadow:var(--shadow-lg);animation:slideUp 0.2s ease;">
-      <div style="padding:18px 22px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--brown);">Choisir un produit</span>
+    <div style="background:var(--warm-white);border-radius:14px;width:560px;max-width:95vw;box-shadow:var(--shadow-lg);animation:slideUp 0.2s ease;display:flex;flex-direction:column;max-height:85vh;">
+      <div style="padding:18px 22px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <span style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--brown);">Choisir les produits</span>
         <button onclick="document.getElementById('product-picker-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button>
       </div>
-      <div style="padding:16px 22px 20px;">
-        ${buildProductPicker()}
+      <div style="display:flex;gap:0;flex:1;overflow:hidden;">
+        <div id="picker-cats" style="width:170px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);background:var(--cream);">
+          ${CATEGORIES.filter(cat => {
+            const bycat = {};
+            CATEGORIES.forEach(c => bycat[c.id] = []);
+            catalogue.forEach((p,i) => { const cid = getCategoryForProduct(p); if(bycat[cid]) bycat[cid].push(p); });
+            return bycat[cat.id] && bycat[cat.id].length > 0;
+          }).map(cat => `
+            <div class="picker-cat-item" onclick="selectPickerCat('${cat.id}')" style="padding:9px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s;" data-cat="${cat.id}">
+              ${cat.label}
+            </div>`).join('')}
+        </div>
+        <div id="picker-products" style="flex:1;overflow-y:auto;padding:8px;">
+          <div style="color:var(--text-muted);font-size:13px;padding:16px;text-align:center;">← Sélectionne une catégorie</div>
+        </div>
+      </div>
+      <!-- Panier sélection -->
+      <div id="picker-selection-bar" style="border-top:1px solid var(--border);padding:12px 16px;background:var(--cream);flex-shrink:0;display:none;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;" id="picker-selected-count">0 produit sélectionné</div>
+        <div id="picker-selected-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+        <button onclick="pickerConfirmMulti('${mode}', ${lineIdx})" style="background:linear-gradient(135deg,#F472A0,#D63E7A);color:white;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;width:100%;">
+          ✓ Ajouter ces produits
+        </button>
       </div>
     </div>`;
   document.body.appendChild(picker);
-}
 
+  // Override selectPickerCat to support multi-select
+  window._pickerSelected = selected;
+  window._pickerMode = mode;
+  window._pickerLineIdx = lineIdx;
+}
 function renderLines() {
   const container = document.getElementById('lines-container');
   if (currentLines.length === 0) {
