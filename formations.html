@@ -1,0 +1,26 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Formations · LIMAGECILS</title><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Mono:wght@300;400;500&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="formations.css?v=20261115-2"><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script><script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script></head><body><section id="formation-login" class="login-page"><form class="login-card" id="formation-login-form"><a href="./">← LIMAGECILS</a><div class="login-logo">Formations</div><p class="login-sub">Retrouve tes élèves et tes dossiers avec ton compte EMMA actuel.</p><label class="login-field">E-mail<input id="formation-email" type="email" autocomplete="username" required></label><label class="login-field">Mot de passe<input id="formation-password" type="password" autocomplete="current-password" required></label><button class="btn bd" id="formation-login-button" type="submit">Me connecter</button><p id="formation-status" role="status">Vérification de la connexion…</p></form></section><div id="formation-account" hidden style="padding:12px 24px;background:white;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><span id="formation-user"></span><div><button class="btn bg" onclick="exportFormationsBackup()">Exporter une sauvegarde</button> <button class="btn bg" onclick="ouvrirParametresImport()">Connexion import</button> <button class="btn bg" onclick="deconnexionFormations()">Déconnexion</button></div></div><p id="formation-save-error" hidden role="alert" style="padding:16px;background:#fff0e8"></p><main id="formation-workspace" hidden><div id="module-formations" style="display:none;min-height:100vh;background:linear-gradient(135deg,#fff0f8,#f0f4ff,#f0fff8);flex-direction:column">
+  <div class="module-hdr"><button class="logout-btn" onclick="location.href='./'">← LIMAGECILS</button><div class="module-hdr-title">🎓 Formations</div></div>
+  <div style="padding:24px;max-width:1000px;margin:0 auto;width:100%">
+    <div style="display:flex;gap:6px;margin-bottom:20px;background:var(--bg2);border-radius:14px;padding:4px">
+      <button id="ftab0" data-ftab="etudiantes" onclick="goFTab(0)" style="flex:1;padding:9px;border-radius:11px;border:none;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;cursor:pointer;background:white;color:var(--acc);box-shadow:var(--shadow)">👥 Étudiantes</button>
+<button id="ftab1" data-ftab="kits" onclick="goFTab(1)" style="flex:1;padding:9px;border-radius:11px;border:none;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--mut)">📦 Kits</button>
+<button id="ftab2" data-ftab="emails" onclick="goFTab(2)" style="flex:1;padding:9px;border-radius:11px;border:none;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--mut)">✉️ Emails</button>
+<button id="ftab3" data-ftab="planning" onclick="goFTab(3)" style="flex:1;padding:9px;border-radius:11px;border:none;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--mut)">📅 Planning</button>
+    </div>
+   <div id="fview-etudiantes"></div>
+<div id="fview-kits" style="display:none"></div>
+<div id="fview-emails" style="display:none"></div>
+<div id="fview-planning" style="display:none"></div>
+  </div>
+</div>
+</main><div class="mo" id="formationModal">
+  <div class="mb" style="width:600px;max-width:96vw">
+    <h2 id="fModalTitle">Nouvelle étudiante</h2>
+    <div id="fModalBody"></div>
+    <div class="ma">
+  <button class="btn bg" onclick="closeMo('formationModal')">Annuler</button>
+  <button class="btn bd" id="saveEtudianteBtn" onclick="saveEtudiante()">Enregistrer</button>
+</div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status"></div><script src="formations-config.js?v=20261115-2"></script><script src="formations-runtime.js?v=20261115-2"></script><script src="formations.js?v=20261115-2"></script><script src="formations-auth.js?v=20261115-2"></script></body></html>
