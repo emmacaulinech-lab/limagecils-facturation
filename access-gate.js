@@ -7,7 +7,7 @@
   document.head.appendChild(style);
   function mount(){
     const overlay=document.createElement('div');overlay.id='limagecils-access-overlay';
-    const frame=document.createElement('iframe');frame.title='Connexion à LIMAGECILS';frame.src='access.html?v=20261115-3';
+    const frame=document.createElement('iframe');frame.title='Connexion à LIMAGECILS';frame.src='access.html?v=20261115-4';
     const logout=document.createElement('button');logout.type='button';logout.className='limagecils-access-logout';logout.textContent='Déconnexion';
     logout.onclick=()=>frame.contentWindow.postMessage({type:'limagecils:signout'},location.origin);
     window.addEventListener('message',event=>{

@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const root=path.join(__dirname,'..'),read=name=>fs.readFileSync(path.join(root,name),'utf8');
-for(const page of ['index.html','facturation-reseau.html','ma-facturation.html','formations.html'])assert(read(page).includes('<head><script src="access-gate.js?v=20261115-3"></script>'),'Accès direct couvert : '+page);
+for(const page of ['index.html','facturation-reseau.html','ma-facturation.html','formations.html'])assert(read(page).includes('<head><script src="access-gate.js?v=20261115-4"></script>'),'Accès direct couvert : '+page);
 function gate(){
  const messages={},nodes=[],window={addEventListener:(name,fn)=>messages[name]=fn};
  const node=tag=>({tag,style:{},dataset:{},contentWindow:{postMessage(){}},appendChild(child){nodes.push(child);},hidden:false});
