@@ -23,3 +23,9 @@ Les modèles PDF utilisent pour le moment leurs URL actuelles sous `/emma/docume
 `node tests/standalone.cjs` : syntaxe, rubriques, liens, invariance des scripts de facturation, onglets formations, lecture principale/ancienne, blocage de corruption, transaction isolée, protection contre un dossier concurrent et changement de compte. Les tests utilisent uniquement des données fictives et ne se connectent pas à Firebase.
 
 Les scripts des quatre pages HTML ont également été parsés. La prévisualisation HTTP locale est interdite dans l'environnement de modification ; les parcours visuels authentifiés et la génération réelle des PDF restent à vérifier avant mise en ligne. Déployer les correctifs coordonnés d'EMMA pour éviter qu'une ancienne version de sa sauvegarde globale ne réécrive les formations ; fermer les anciennes fenêtres avant utilisation.
+
+## Connexion à l'espace LIMAGECILS
+
+`access-gate.js` masque l'accueil et les trois pages métier jusqu'à confirmation d'une session Firebase EMMA. `access.html` isole le SDK de connexion pour éviter tout conflit avec les deux outils de facturation. La session EMMA habituelle est réutilisée ; le bouton Déconnexion ferme l'accès à toutes les rubriques. Les messages de session ne sont acceptés que depuis la fenêtre de connexion et la même origine. Aucun mot de passe n'est sauvegardé par le code ajouté ni transmis par message entre fenêtres.
+
+Ce contrôle est un écran d'accès côté navigateur. GitHub Pages reste un hébergement statique public ; la protection des données repose sur les authentifications et règles Firebase existantes, qui ne sont pas modifiées. `node tests/access.cjs` vérifie les accès directs, le blocage initial, le filtrage des messages, la connexion, le refus et la déconnexion.
