@@ -26,6 +26,16 @@ Les scripts des quatre pages HTML ont également été parsés. La prévisualisa
 
 ## Connexion à l'espace LIMAGECILS
 
-`access-gate.js` masque l'accueil et les trois pages métier jusqu'à confirmation d'une session Firebase EMMA. `access.html` isole le SDK de connexion pour éviter tout conflit avec les deux outils de facturation. La session EMMA habituelle est réutilisée ; le bouton Déconnexion ferme l'accès à toutes les rubriques. Les messages de session ne sont acceptés que depuis la fenêtre de connexion et la même origine. Aucun mot de passe n'est sauvegardé par le code ajouté ni transmis par message entre fenêtres.
+`access-gate.js` masque l'accueil et les trois pages métier jusqu'à confirmation d'une session Firebase EMMA. `access.html` isole le SDK de connexion pour éviter tout conflit avec les deux outils de facturation. Une ancienne session ne suffit plus ; le bouton Déconnexion ferme l'accès à toutes les rubriques. Les messages de session ne sont acceptés que depuis la fenêtre de connexion et la même origine. Aucun mot de passe n'est sauvegardé par le code ajouté ni transmis par message entre fenêtres.
 
 Ce contrôle est un écran d'accès côté navigateur. GitHub Pages reste un hébergement statique public ; la protection des données repose sur les authentifications et règles Firebase existantes, qui ne sont pas modifiées. `node tests/access.cjs` vérifie les accès directs, le blocage initial, le filtrage des messages, la connexion, le refus et la déconnexion.
+
+## Validation explicite des identifiants
+
+À chaque ouverture ou rechargement, le formulaire demande e-mail et mot de passe ; l’autoremplissage du navigateur reste autorisé. La session Firebase d’accès est limitée à l’onglet et une entrée depuis l’extérieur efface l’ancienne authentification avant la nouvelle connexion. Ouvrir EMMA verrouille un espace LIMAGECILS déjà ouvert dans un autre onglet, et réciproquement. Le retour arrière après navigation verrouille aussi l’accès.
+
+Les liens internes LIMAGECILS conservent la navigation avec une continuation à usage unique, liée au chemin et à l’utilisateur, valable 15 secondes. Elle n’ouvre rien sans un utilisateur Firebase correspondant et ne survit ni au rechargement ni à une nouvelle ouverture. Après connexion directe à une rubrique, le rechargement initialise les données avec le compte confirmé.
+
+Le formulaire contient la clé API Anthropic/Claude, facultative pour les outils classiques et nécessaire pour les actions IA. Une clé déjà stockée est proposée dans un champ masqué ; elle n’est enregistrée ou retirée qu’après une authentification réussie. Aucun mot de passe n’est stocké par l’application. La vérification de la validité de la clé reste effectuée par les appels IA existants.
+
+La facturation Franchise conserve son compte dédié : son ancienne authentification est effacée à chaque ouverture de cette rubrique et un mot de passe doit être validé avant de charger les factures (`tests/franchise-login.cjs`).

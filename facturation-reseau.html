@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><script src="access-gate.js?v=20261115-4"></script>
+<head><script src="access-gate.js?v=20261115-5"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Facturation Franchise · LIMAGECILS PRO</title>
@@ -563,7 +563,10 @@
   // Expose to window for non-module scripts
   window._fbAuth = auth;
   window._fbDb = db;
-  window._fbSignIn = signInWithEmailAndPassword;
+  let franchiseSessionReady=false;
+  const franchiseStartup=signOut(auth).then(()=>{franchiseSessionReady=true;afficherSessionFranchise(auth.currentUser);});
+  franchiseStartup.catch(()=>{document.getElementById('login-error').textContent='Connexion impossible à préparer. Rechargez la page.';});
+  window._fbSignIn = async (...args)=>{await franchiseStartup;return signInWithEmailAndPassword(...args);};
   window._fbSignOut = signOut;
   window._fbOnAuth = onAuthStateChanged;
   window._fbDoc = doc;
@@ -572,7 +575,8 @@
   window._fbResetPassword = sendPasswordResetEmail;
 
   // Auth state listener
-  onAuthStateChanged(auth, (user) => {
+  function afficherSessionFranchise(user){
+    if(!franchiseSessionReady)return;
     if (user) {
       window._currentUser = user;
       document.getElementById('login-screen').style.display = 'none';
@@ -584,7 +588,8 @@
       document.getElementById('login-screen').style.display = 'flex';
       document.getElementById('app-screen').style.display = 'none';
     }
-  });
+  }
+  onAuthStateChanged(auth,afficherSessionFranchise);
 </script>
 <link rel="icon" type="image/png" href="assets/limagecils-pro.png?v=20261115-4"><link rel="apple-touch-icon" href="assets/limagecils-pro.png?v=20261115-4"><meta name="apple-mobile-web-app-title" content="LIMAGECILS PRO"><link rel="manifest" href="manifest.webmanifest?v=20261115-4"></head>
 <body>

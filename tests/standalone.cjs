@@ -1,9 +1,9 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),{createHash}=require('node:crypto');
 const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 for(const file of ['formations-config.js','formations-runtime.js','formations.js','formations-auth.js'])new vm.Script(read(file));
-for(const [file,hash] of [['facturation-reseau.html','20e3320548898572745fed990128d358b93cbd254d1916ab9f262906a624393a'],['ma-facturation.html','37e86bff21609f444f27900f9db95ebf3de6e710fc2fb683c41a67181e953d2c']]){
- const source=read(file).replace('<script src="access-gate.js?v=20261115-4"></script>',''),scripts=[...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(x=>x[1]).join('\n');
- assert.equal(createHash('sha256').update(scripts).digest('hex'),hash,'Logique facturation conservée');
+for(const [file,hash] of [['facturation-reseau.html','4217e3c5343186e6c1409e620b695fc0298f07df46ec6c9ea5ce283f418c0085'],['ma-facturation.html','37e86bff21609f444f27900f9db95ebf3de6e710fc2fb683c41a67181e953d2c']]){
+ const source=read(file).replace('<script src="access-gate.js?v=20261115-5"></script>',''),scripts=[...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(x=>x[1]).join('\n');
+ assert.equal(createHash('sha256').update(scripts).digest('hex'),hash,'Version des scripts facturation vérifiée');
  assert(source.includes('Accueil LIMAGECILS'));
 }
 const home=read('index.html');for(const title of ['Facturation<br> Franchise','Facturation<br> clientes','Formations'])assert(home.includes(title));
