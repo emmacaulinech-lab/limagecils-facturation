@@ -2617,15 +2617,19 @@ async function genererConvocationFormation(etudianteId){
 
 const CALIBRAGE_CONTRATS_EMMA = {
   'contrat-debutante-express-3j': {
-    sha:'4444ddffe5b7dc4dbd27921d2fc7d17ee43de88e2bb4046be7607928b2932aab',
+    sha:'643deb22dc76e5c52aee4c33cdaf687c35a353aa52dfbdbfcd2ec8716e8d7501',
     prix:1800,
-    identiteX:78.89355,
-    naissanceX:84.55469,
-    naissanceFinX:113.83012,
-    periode:[97.75,694.7256,292.7723,713.2256,706.5616],
-    documentX:99.17773,
-    signature:[101.78711,538.7856],
-    cp:false
+    champs:[
+      {page:0, cle:'nom', libelle:'Identité', zone:[90.78,703.80,98.01,714.89], droite:297.5, lignes:1},
+      {page:0, cle:'adresse', libelle:'Adresse complète', zone:[113.55,687.80,120.78,698.89], droite:297.5, lignes:2},
+      {page:0, cle:'naissance', libelle:'Naissance et lieu', zone:[94.94,660.80,176.90,671.89], droite:297.5, lignes:1},
+      {page:0, cle:'profession', libelle:'Profession / situation actuelle', zone:[191.88,644.80,199.11,655.89], droite:297.5, lignes:2},
+      {page:0, cle:'telephone', libelle:'Téléphone', zone:[99.95,623.80,107.18,634.89], droite:297.5, lignes:1},
+      {page:0, cle:'email', libelle:'Adresse mail', zone:[119.11,601.80,126.34,612.89], droite:297.5, lignes:1},
+      {page:1, cle:'periode', libelle:'Dates de formation', zone:[104.44,641.02,408.98,663.11], x:104.45, y:654.19, droite:543.95, lignes:1},
+      {page:3, cle:'dateDocument', libelle:'Date du document', zone:[112.72,471.02,119.96,482.11], droite:297.5, lignes:1},
+      {page:3, cle:'nom', libelle:'Nom de la stagiaire', zone:[107.41,407.02,114.65,418.11], droite:297.5, lignes:2}
+    ]
   },
   'contrat-coaching-prive-3j': {
     sha:'8106b5e15b60e620555f6e29f74e3a14ca58c0c2a020987dfed40d5c00723a35',
@@ -2853,6 +2857,26 @@ async function remplirContratEmma(pdf,c,v){
   const font = await pdf.embedFont(
     PDFLib.StandardFonts.TimesRomanBold
   );
+
+  if(c.champs){
+    const valeurs = {
+      ...v,
+      periode:'- du : '+v.debut+' au : '+v.fin
+        +'   De : 9 h 30 à 12 h 30 / 13 h 30 à 17 h 30'
+    };
+
+    for(const champ of c.champs){
+      const page = pdf.getPage(champ.page);
+      const x = champ.x ?? champ.zone[0];
+      const y = champ.y ?? champ.zone[1]+2.16;
+      masquerDocumentEmma(page,champ.zone);
+      ecrireChampContratEmma(
+        page,font,valeurs[champ.cle],x,y,
+        champ.droite-x,champ.lignes,champ.libelle
+      );
+    }
+    return pdf.save();
+  }
 
   const p1 = pdf.getPage(0);
   const p2 = pdf.getPage(1);
