@@ -2615,10 +2615,24 @@ async function genererConvocationFormation(etudianteId){
   }
 }
 
+const CHAMPS_CONTRAT_TROIS_PAGES = [
+  {page:0, cle:'nom', libelle:'Identité', zone:[90.78,703.80,98.01,714.89], droite:297.5, lignes:1},
+  {page:0, cle:'adresse', libelle:'Adresse complète', zone:[111.05,687.80,118.28,698.89], y:691.5, droite:315, lignes:2},
+  {page:0, cle:'naissance', libelle:'Naissance et lieu', zone:[94.94,671.80,171.89,682.89], droite:297.5, lignes:1},
+  {page:0, cle:'profession', libelle:'Profession / situation actuelle', zone:[191.88,655.80,199.11,666.89], droite:297.5, lignes:2},
+  {page:0, cle:'telephone', libelle:'Téléphone', zone:[99.95,634.80,107.18,645.89], droite:297.5, lignes:1},
+  {page:0, cle:'email', libelle:'Adresse mail', zone:[119.11,612.80,126.34,623.89], droite:297.5, lignes:1},
+  {page:1, cle:'periode', libelle:'Dates de formation', zone:[104.44,674.02,373.58,696.11], x:104.45, y:687.19, droite:543.95, lignes:1},
+  {page:2, cle:'dateDocument', libelle:'Date du document', zone:[112.70,276.02,119.93,287.11], droite:297.5, lignes:1},
+  {page:2, cle:'nom', libelle:'Nom de la stagiaire', zone:[51.04,205.02,109.95,216.11],
+    zoneSupplementaire:[107.41,216.02,114.65,227.11], droite:297.5, lignes:2}
+];
+
 const CALIBRAGE_CONTRATS_EMMA = {
   'contrat-debutante-express-3j': {
     sha:'643deb22dc76e5c52aee4c33cdaf687c35a353aa52dfbdbfcd2ec8716e8d7501',
     prix:1800,
+    pages:4,
     champs:[
       {page:0, cle:'nom', libelle:'Identité', zone:[90.78,703.80,98.01,714.89], droite:297.5, lignes:1},
       {page:0, cle:'adresse', libelle:'Adresse complète', zone:[113.55,687.80,120.78,698.89], droite:297.5, lignes:2},
@@ -2632,37 +2646,22 @@ const CALIBRAGE_CONTRATS_EMMA = {
     ]
   },
   'contrat-coaching-prive-3j': {
-    sha:'8106b5e15b60e620555f6e29f74e3a14ca58c0c2a020987dfed40d5c00723a35',
+    sha:'74da935768450792576bf3a321228cf184277b6a355680ed936919ef30dafd40',
     prix:1500,
-    identiteX:76.76855,
-    naissanceX:82.42969,
-    naissanceFinX:88.56669,
-    periode:[97.75,721.6176,276.3667,730.6176,723.5616],
-    documentX:99.15283,
-    signature:[101.78711,538.7856],
-    cp:true
+    pages:3,
+    champs:CHAMPS_CONTRAT_TROIS_PAGES
   },
   'contrat-debutante-4j': {
-    sha:'c0cc4bfce2da502c5f831b0aaeb9f7603f6c784dd625e5183fefa18e56d42107',
+    sha:'989fa0ed0040844134e46774683bb3ef4f6a034e2f1d68b3dc63d41d548d495f',
     prix:2000,
-    identiteX:78.89355,
-    naissanceX:84.55469,
-    naissanceFinX:135.08012,
-    periode:[97.75,711.7256,292.7723,730.2256,723.5616],
-    documentX:97.26855,
-    signature:[51.75,527.3398],
-    cp:false
+    pages:3,
+    champs:CHAMPS_CONTRAT_TROIS_PAGES
   },
   'contrat-debutante-5j': {
-    sha:'0a8301a72d796072286c6a0644bab61cebd9beb591069a347363b0dcacd8054a',
+    sha:'1336d7af8ee3d3c6450f6d6c61843674d65d80e9a682362ef88a1ca93fdc665b',
     prix:2500,
-    identiteX:78.89355,
-    naissanceX:84.55469,
-    naissanceFinX:135.08012,
-    periode:[97.75,711.7256,292.7723,730.2256,723.5616],
-    documentX:97.26855,
-    signature:[51.75,527.3398],
-    cp:false
+    pages:3,
+    champs:CHAMPS_CONTRAT_TROIS_PAGES
   }
 };
 
@@ -2858,142 +2857,24 @@ async function remplirContratEmma(pdf,c,v){
     PDFLib.StandardFonts.TimesRomanBold
   );
 
-  if(c.champs){
-    const valeurs = {
-      ...v,
-      periode:'- du : '+v.debut+' au : '+v.fin
-        +'   De : 9 h 30 à 12 h 30 / 13 h 30 à 17 h 30'
-    };
-
-    for(const champ of c.champs){
-      const page = pdf.getPage(champ.page);
-      const x = champ.x ?? champ.zone[0];
-      const y = champ.y ?? champ.zone[1]+2.16;
-      masquerDocumentEmma(page,champ.zone);
-      ecrireChampContratEmma(
-        page,font,valeurs[champ.cle],x,y,
-        champ.droite-x,champ.lignes,champ.libelle
-      );
-    }
-    return pdf.save();
-  }
-
-  const p1 = pdf.getPage(0);
-  const p2 = pdf.getPage(1);
-  const p4 = pdf.getPage(3);
-
-  // Boîte mesurée des X :
-  // x → x+6.137 ; y-1.836 → y+6.664.
-  const remplacer = (
-    page,texte,x,y,finX,largeur,lignes,libelle
-  ) => {
-    masquerDocumentEmma(
-      page,
-      [x,y-1.836,finX,y+6.664]
-    );
-
-    ecrireChampContratEmma(
-      page,font,texte,x,y,largeur,lignes,libelle
-    );
+  const valeurs = {
+    ...v,
+    periode:'- du : '+v.debut+' au : '+v.fin
+      +'   De : 9 h 30 à 12 h 30 / 13 h 30 à 17 h 30'
   };
 
-  // La colonne organisme commence à x=302.
-  // Limite de la colonne stagiaire : x=297.5.
-
-  remplacer(
-    p1,v.nom,
-    c.identiteX,712.1356,c.identiteX+6.137,
-    297.5-c.identiteX,2,
-    'Identité'
-  );
-
-  remplacer(
-    p1,v.adresse,
-    100.37183,690.6898,106.50883,
-    197.12817,2,
-    'Adresse complète'
-  );
-
-  // Date + lieu sont recomposés ensemble.
-  // Coaching : le libellé « À : » est absent du modèle.
-  remplacer(
-    p1,v.naissance,
-    c.naissanceX,667.7981,c.naissanceFinX,
-    297.5-c.naissanceX,2,
-    'Naissance et lieu'
-  );
-
-  remplacer(
-    p1,v.profession,
-    164.8274,644.9064,170.9644,
-    132.6726,2,
-    'Profession / situation actuelle'
-  );
-
-  remplacer(
-    p1,v.telephone,
-    86.68799,622.0147,92.82499,
-    210.81201,1,
-    'Téléphone'
-  );
-
-  remplacer(
-    p1,v.email,
-    102.97412,599.1231,109.11112,
-    194.52588,1,
-    'Adresse mail'
-  );
-
-  if(c.cp){
-    // « C.P. » :
-    // x=51.75..65.45455 ; ligne de base y=576.2314.
-    // Valeur après un espace de 2.125 pt.
-    const codes = [
-      ...new Set(v.adresse.match(/\b\d{5}\b/g) || [])
-    ];
-
-    const cp = codes.length===1
-      ? codes[0]
-      : 'Voir adresse ci-dessus';
-
+  for(const champ of c.champs){
+    const page = pdf.getPage(champ.page);
+    const x = champ.x ?? champ.zone[0];
+    const y = champ.y ?? champ.zone[1]+2.16;
+    masquerDocumentEmma(page,champ.zone);
+    if(champ.zoneSupplementaire) masquerDocumentEmma(page,champ.zoneSupplementaire);
     ecrireChampContratEmma(
-      p1,font,cp,
-      67.57955,576.2314,
-      229.92045,1,
-      'Code postal'
+      page,font,valeurs[champ.cle],x,y,
+      champ.droite-x,champ.lignes,champ.libelle
     );
   }
 
-  // L'espace entre les X ne suffit pas pour deux dates.
-  // Recomposition du bloc dates + horaires mesuré.
-  masquerDocumentEmma(p2,c.periode);
-
-  ecrireChampContratEmma(
-    p2,font,
-    '- du : '+v.debut
-    +' au : '+v.fin
-    +'   De : 9 h 30 à 12 h 30 / 13 h 30 à 17 h 30',
-    97.75,c.periode[4],
-    450,1,
-    'Dates de formation'
-  );
-
-  remplacer(
-    p4,v.dateDocument,
-    c.documentX,593.3608,c.documentX+6.137,
-    297.5-c.documentX,1,
-    'Date du document'
-  );
-
-  remplacer(
-    p4,v.nom,
-    c.signature[0],c.signature[1],
-    c.signature[0]+6.137,
-    297.5-c.signature[0],2,
-    'Nom de la stagiaire'
-  );
-
-  // Le nom est prérempli ; l'élève doit encore signer.
   return pdf.save();
 }
 
@@ -3017,10 +2898,7 @@ async function genererContratFormation(etudianteId){
       eleve,donnees,c
     );
 
-    // Les contrats actuellement importés n'ont pas d'extension.
-    const {pdf} = await chargerModeleEmma(
-  nom,c.sha,4,'.pdf'
-);
+    const {pdf} = await chargerModeleEmma(nom,c.sha,c.pages,'.pdf');
 
     const resultat = await remplirContratEmma(
       pdf,c,valeurs
