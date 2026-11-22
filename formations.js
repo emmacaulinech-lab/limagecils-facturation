@@ -2131,6 +2131,56 @@ CALIBRAGE_CONVOCATIONS_EMMA['convocation-coaching-prive-2j-perso-kit-payant'] = 
   sha:'2156deb66aa153afb3bf8d0cdb5c464b1da33e9bbbd784e25b1407b4b7b5edfb'
 };
 
+// Les variantes payantes et le modèle de secours utilisent encore les PDF historiques.
+const CONVOCATION_SECOURS_EMMA = CALIBRAGE_CONVOCATIONS_EMMA['convocation-debutante-express-3j-perso'];
+const CONVOCATION_V3_CPF = {
+  base:'documents/',
+  pages:2,
+  bienvenue:[255.25,581.79,339.75,596.12,584.4,12],
+  debut:[175.59,552.45,182.94,567.49,556.2,11],
+  date:[476.91,693.20,484.93,709.61,697.3,12]
+};
+const CONVOCATION_V3_PERSO = {
+  ...CONVOCATION_V3_CPF,
+  bienvenue:[255.25,620.79,339.75,635.12,623.4,12],
+  debut:[175.59,591.45,182.94,606.49,595.2,11]
+};
+
+Object.assign(CALIBRAGE_CONVOCATIONS_EMMA,{
+  'convocation-debutante-5j-cpf': {
+    ...CONVOCATION_V3_CPF,
+    sha:'05a6d2aedb3ec80528f485b8d25520cd420db88b5789dc5f565155f6d8421255', jourDebut:1, libelleJourDebut:'Lundi'
+  },
+  'convocation-debutante-express-3j-cpf': {
+    ...CONVOCATION_V3_CPF,
+    sha:'e8ee23bc8caf4b6cc5b5f1bae7b6c578541c98295b5ec482d78898805bab026c'
+  },
+  'convocation-debutante-4j-cpf': {
+    ...CONVOCATION_V3_CPF,
+    sha:'f4cd26965f08c4e1bd73f0111d178890f4cc9b5e610a66f88d8137b39c62955f', jourDebut:2, libelleJourDebut:'Mardi'
+  },
+  'convocation-coaching-prive-3j-cpf': {
+    ...CONVOCATION_V3_CPF,
+    sha:'a65d343ca2b765dadf2a45cb4e1ae4b0dd597b829fc8e37e115f55846f6de8be'
+  },
+  'convocation-debutante-4j-perso': {
+    ...CONVOCATION_V3_PERSO,
+    sha:'f6b0030ccb2344c7ef8d091630322521eac7efcfad2b2f0bf3626c75ab285ec5', jourDebut:2, libelleJourDebut:'Mardi'
+  },
+  'convocation-debutante-express-3j-perso': {
+    ...CONVOCATION_V3_PERSO,
+    sha:'b1a35a0492001dc7c9b091a1b7ab5225931d65f1da81b199ddad382b657fa646'
+  },
+  'convocation-debutante-5j-perso': {
+    ...CONVOCATION_V3_PERSO,
+    sha:'f4a7a76a19b47a28eb836b3e212c9cedf43f73d3896edabc53383c5d13af84d4', pages:3, jourDebut:1, libelleJourDebut:'Lundi'
+  },
+  'convocation-coaching-prive-2j-perso': {
+    ...CONVOCATION_V3_PERSO,
+    sha:'fd27fcf17dafeea033489c5b976501ca746e7554583dd9878bb352e85809c88d'
+  }
+});
+
 function texteDocumentEmma(valeur){
   return String(valeur ?? '')
     .normalize('NFC')
@@ -2202,13 +2252,13 @@ async function verifierModeleEmma(bytes, sha){
   }
 }
 
-async function chargerModeleEmma(nom, sha, pages, extension){
+async function chargerModeleEmma(nom, sha, pages, extension, base='https://emmacaulinech-lab.github.io/emma/documents/'){
   if(!window.PDFLib){
     throw new Error('PDF-Lib n’est pas chargé.');
   }
 
   const reponse = await fetch(
-    'https://emmacaulinech-lab.github.io/emma/documents/' + nom + extension,
+    base + nom + extension,
     {cache:'no-store'}
   );
 
@@ -2304,7 +2354,7 @@ async function remplirConvocationEmma(pdfBytes, donnees){
   const pdf = await PDFLib.PDFDocument.load(pdfBytes);
 
   if(
-    pdf.getPageCount() !== 2 ||
+    pdf.getPageCount() !== (c.pages ?? 2) ||
     pdf.getPages().some(p =>
       p.getWidth() !== 595 ||
       p.getHeight() !== 842 ||
@@ -2527,7 +2577,7 @@ async function genererConvocationFormation(etudianteId){
       // Les formations sans modèle dédié reprennent la vraie convocation
       // Débutante Express 3J : logo, identité visuelle et pied de page officiels.
       const modeleReference='convocation-debutante-express-3j-perso';
-      const reference=CALIBRAGE_CONVOCATIONS_EMMA[modeleReference];
+      const reference=CONVOCATION_SECOURS_EMMA;
       const {pdf}=await chargerModeleEmma(modeleReference,reference.sha,2,'.pdf');
       const [page,pageProgramme]=pdf.getPages();
       const normal=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
@@ -2590,7 +2640,7 @@ async function genererConvocationFormation(etudianteId){
     }
 
     const {bytes} = await chargerModeleEmma(
-      nom,c.sha,2,'.pdf'
+      nom,c.sha,c.pages ?? 2,'.pdf',c.base
     );
 
     const resultat = await remplirConvocationEmma(
