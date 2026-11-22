@@ -2680,7 +2680,7 @@ const CHAMPS_CONTRAT_TROIS_PAGES = [
 
 const CALIBRAGE_CONTRATS_EMMA = {
   'contrat-debutante-express-3j': {
-    sha:'643deb22dc76e5c52aee4c33cdaf687c35a353aa52dfbdbfcd2ec8716e8d7501',
+    sha:'02e4cbb8991587990f36f1eb44e265d787ab21da1e40d5b8a0ccc69f071547e6',
     prix:1800,
     pages:4,
     champs:[
@@ -2696,19 +2696,19 @@ const CALIBRAGE_CONTRATS_EMMA = {
     ]
   },
   'contrat-coaching-prive-3j': {
-    sha:'74da935768450792576bf3a321228cf184277b6a355680ed936919ef30dafd40',
+    sha:'4df80a3c3469795530fdde89688474f54f696fca2f8a5c11ab14d5dd9d0a15fb',
     prix:1500,
     pages:3,
     champs:CHAMPS_CONTRAT_TROIS_PAGES
   },
   'contrat-debutante-4j': {
-    sha:'989fa0ed0040844134e46774683bb3ef4f6a034e2f1d68b3dc63d41d548d495f',
+    sha:'2232b6c3de5cab4da6b2af3a4f3944b9f4fbee05df19f60dfcc6ccc942680b38',
     prix:2000,
     pages:3,
     champs:CHAMPS_CONTRAT_TROIS_PAGES
   },
   'contrat-debutante-5j': {
-    sha:'1336d7af8ee3d3c6450f6d6c61843674d65d80e9a682362ef88a1ca93fdc665b',
+    sha:'2cee5b565544227ae8a3c1f6496585031a6d822a517f4f5eead22eed67344f99',
     prix:2500,
     pages:3,
     champs:CHAMPS_CONTRAT_TROIS_PAGES
