@@ -1129,21 +1129,7 @@ function renderFicheEtudianteFormation(e,today){
   Importer le bulletin rempli
 </button>
 
-              <button
-                class="btn bg bsm"
-                onclick="genererConvocationFormation('${e.id}')"
-              >
-                Convocation
-              </button>
-
-              <button
-                class="btn bg bsm"
-                onclick="genererContratFormation('${e.id}')"
-              >
-                Contrat
-              </button>
-              ${(e.financement?.type==='perso'||formationTermineeCertificatEmma(e))?`<button class="btn bg bsm" data-eleve="${encodeURIComponent(e.id)}" onclick="genererCertificatRealisationFormation(decodeURIComponent(this.dataset.eleve))">Certificat de réalisation</button>`:'<small style="color:var(--mut)">Certificat disponible à la fin de la formation.</small>'}
-
+              ${boutonsDocumentsPersonnalisesFormation(e)}
 
             </div>
 
@@ -1960,6 +1946,33 @@ function getDocumentsFormation(etudiante){
 
 }
 
+function libelleConvocationPersonnaliseeFormation(etudiante){
+  const config=getDocumentsFormation(etudiante);
+  if(!config)return '';
+  if(etudiante.financement?.type==='perso'){
+    return etudiante.financement.kitOffert===false
+      ? 'Créer la convocation · kit payant'
+      : 'Créer la convocation · kit offert';
+  }
+  return config.convocation ? 'Créer la convocation CPF' : '';
+}
+
+function boutonsDocumentsPersonnalisesFormation(etudiante){
+  const config=getDocumentsFormation(etudiante);
+  if(!config)return '<small style="color:var(--mut)">Renseigne la formation et le financement pour créer les PDF.</small>';
+  const id=encodeURIComponent(etudiante.id);
+  const libelleConvocation=libelleConvocationPersonnaliseeFormation(etudiante);
+  const bouton=(libelle,generateur)=>'<button type="button" class="btn bg bsm" data-eleve="'+id+
+    '" onclick="'+generateur+'(decodeURIComponent(this.dataset.eleve))">'+libelle+'</button>';
+  return [
+    libelleConvocation&&bouton(libelleConvocation,'genererConvocationFormation'),
+    config.contrat&&bouton('Créer le contrat personnalisé','genererContratFormation'),
+    etudiante.financement?.type==='perso'||formationTermineeCertificatEmma(etudiante)
+      ? bouton('Créer le certificat de réalisation','genererCertificatRealisationFormation')
+      : '<small style="color:var(--mut)">Certificat disponible à la fin de la formation.</small>'
+  ].filter(Boolean).join('');
+}
+
 function getDonneesDocumentsFormation(etudiante){
 
   const config = getDocumentsFormation(etudiante);
@@ -2007,7 +2020,7 @@ function getDonneesDocumentsFormation(etudiante){
     ),
 
     dateFin: formatDate(
-      etudiante?.dateFinFormation
+      etudiante?.dateFinFormation || (config.jours===1 ? etudiante?.dateFormation : '')
     ),
 
     lieu: etudiante?.lieu || '',
@@ -2486,7 +2499,7 @@ function donneesCertificatRealisationEmma(e){
     `Réaliser le protocole ${getLabelFormation(type)} dans le respect des règles d’hygiène.`,
     'Apporter les conseils d’entretien après la prestation.'
   ]);
-  return {nomComplet:nomEtudianteFormation(e),formation:getLabelFormation(type),dateDebut:dateSessionFormation(e.dateFormation),dateFin:dateSessionFormation(e.dateFinFormation),heures:Number(e.heuresRealisees??(type==='browlift'?6.5:config.heures)),dateDocument:dateLocaleISO(),competences:competences.join('\n'),certification:cpfExtensions?'Inscrite au Répertoire Spécifique n° RS 7814\nCertificateur Institut Laugier - Échéance certification 31/10/28':''};
+  return {nomComplet:nomEtudianteFormation(e),formation:getLabelFormation(type),dateDebut:dateSessionFormation(e.dateFormation),dateFin:dateSessionFormation(e.dateFinFormation||(config.jours===1?e.dateFormation:'')),heures:Number(e.heuresRealisees??(type==='browlift'?6.5:config.heures)),dateDocument:dateLocaleISO(),competences:competences.join('\n'),certification:cpfExtensions?'Inscrite au Répertoire Spécifique n° RS 7814\nCertificateur Institut Laugier - Échéance certification 31/10/28':''};
 }
 function validerDonneesCertificatRealisationEmma(d){
   if(!texteDocumentEmma(d.nomComplet)||!texteDocumentEmma(d.formation)||!texteDocumentEmma(d.competences))throw Error('Complète le nom, la formation et les compétences.');
@@ -4278,7 +4291,7 @@ function documentsMailFormation(e,type){
   const formation=e.formationTypeNormalise||e.formation||'';
   const config=getDocumentsFormation({...e,formationTypeNormalise:formation});
   const absent=nom=>({nom});
-  if(type==='fin-formation')return [{nom:'Certificat de réalisation personnalisé',fichier:'certificat-realisation.pdf',genere:true,action:'certificat'}];
+  if(type==='fin-formation')return [{nom:'Certificat de réalisation personnalisé',fichier:'certificat-realisation.pdf',genere:true,action:'certificat',bouton:'Créer le certificat de réalisation'}];
   if(type==='candidature') return [
     {nom:'Bulletin de candidature',fichier:'bulletin-candidature.pdf',modele:true},
     absent('Grille d’analyse des besoins')
@@ -4286,11 +4299,14 @@ function documentsMailFormation(e,type){
   const genere=(nom,modele,calibrages,action)=>modele&&calibrages[modele]
     ? {nom,fichier:modele+'.pdf',genere:true,action}
     : absent(nom);
-  if(type==='convocation') return [{nom:'Convocation générée',fichier:'convocation.pdf',genere:true,action:'convocation'}];
-  if(type==='validation-perso') return [
-    {nom:'Convocation personnalisée',fichier:'convocation.pdf',genere:true,action:'convocation'},
-    absent('Conditions générales de vente')
-  ];
+  if(type==='convocation'||type==='validation-perso'){
+    const bouton=libelleConvocationPersonnaliseeFormation({...e,formationTypeNormalise:formation});
+    const documents=[bouton
+      ? {nom:'Convocation personnalisée',fichier:'convocation.pdf',genere:true,action:'convocation',bouton}
+      : absent('Convocation personnalisée')];
+    if(type==='validation-perso')documents.push(absent('Conditions générales de vente'));
+    return documents;
+  }
   return [genere('Contrat généré',config?.contrat,CALIBRAGE_CONTRATS_EMMA,'contrat'),
     absent('Règlement intérieur'),absent('CGV'),absent('Liste des hôtels'),
     absent('Programme pédagogique — '+getLabelFormation(formation))];
@@ -4335,7 +4351,7 @@ function ouvrirMailFormation(etudianteId,type){
     <div class="fr"><label for="mailFormationObjet">Objet</label><input id="mailFormationObjet" value="${esc(mail.sujet)}"></div>
     <h3>Pièces jointes à ajouter</h3><p class="f-mail-help">La messagerie s’ouvre avec le texte uniquement. Ajoute toi-même les fichiers avant l’envoi.</p>
     <div class="f-mail-documents">${mail.documents.map(doc=>`<div class="f-mail-document"><label><input type="checkbox"> <span>${esc(doc.nom)}</span></label>${doc.fichier?
-      doc.genere?`<small>Joindre le PDF personnalisé téléchargé pour cette élève.</small><button type="button" class="btn bg bsm" data-generer="${doc.action}">Générer le PDF</button>`:
+      doc.genere?`<small>Joindre le PDF personnalisé téléchargé pour cette élève.</small><button type="button" class="btn bg bsm" data-generer="${doc.action}">${esc(doc.bouton||"Générer le PDF")}</button>`:
       `<a href="https://emmacaulinech-lab.github.io/emma/documents/${encodeURIComponent(doc.fichier)}" target="_blank" rel="noopener">Ouvrir le bulletin à compléter</a>`:
       `<small class="f-mail-warning">Document à ajouter : ${esc(doc.nom)}</small>`}</div>`).join('')}</div>
     ${mail.recuperer.length?`<h3>À récupérer auprès de l’élève</h3><ul>${mail.recuperer.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:''}
