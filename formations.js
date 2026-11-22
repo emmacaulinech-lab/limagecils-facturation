@@ -1881,7 +1881,6 @@ const DOCUMENTS_FORMATION = {
       heures: 21,
       bulletin: true,
       convocation: 'convocation-debutante-express-3j-perso',
-      convocationKitPayant: 'convocation-debutante-express-3j-perso-kit-payant',
       contrat: 'contrat-debutante-express-3j'
     },
 
@@ -1890,7 +1889,6 @@ const DOCUMENTS_FORMATION = {
       heures: 14,
       bulletin: true,
       convocation: 'convocation-coaching-prive-2j-perso',
-      convocationKitPayant: 'convocation-coaching-prive-2j-perso-kit-payant',
       contrat: null
     },
 
@@ -1899,7 +1897,6 @@ const DOCUMENTS_FORMATION = {
       heures: 28,
       bulletin: true,
       convocation: 'convocation-debutante-4j-perso',
-      convocationKitPayant: 'convocation-debutante-4j-perso-kit-payant',
       contrat: 'contrat-debutante-4j'
     },
 
@@ -1908,7 +1905,6 @@ const DOCUMENTS_FORMATION = {
       heures: 35,
       bulletin: true,
       convocation: 'convocation-debutante-5j-perso',
-      convocationKitPayant: 'convocation-debutante-5j-perso-kit-payant',
       contrat: 'contrat-debutante-5j'
     },
 
@@ -2031,10 +2027,7 @@ function getDonneesDocumentsFormation(etudiante){
     bulletinDisponible:
       config.bulletin === true,
 
-    modeleConvocation:
-      financement === 'perso' && etudiante?.financement?.kitOffert === false
-        ? (config.convocationKitPayant || config.convocation)
-        : config.convocation,
+    modeleConvocation: config.convocation,
 
     modeleContrat:
       config.contrat
@@ -2112,27 +2105,6 @@ const CALIBRAGE_CONVOCATIONS_EMMA = {
   }
 };
 
-// Versions payantes : même design officiel, mentions de financement personnel.
-CALIBRAGE_CONVOCATIONS_EMMA['convocation-debutante-express-3j-perso-kit-payant'] = {
-  ...CALIBRAGE_CONVOCATIONS_EMMA['convocation-debutante-express-3j-cpf'],
-  sha:'c27cef903f13e62a9bdf0567bf2dcb4b98fa6d3511018477bd4b81594bdd4186',
-  date:[359.5095,725.05,409.6211,736.05,727.8,11]
-};
-CALIBRAGE_CONVOCATIONS_EMMA['convocation-debutante-4j-perso-kit-payant'] = {
-  ...CALIBRAGE_CONVOCATIONS_EMMA['convocation-debutante-4j-cpf'],
-  sha:'06463bb362584b92e567c38d9e133e4af1817b0a3907b462b43d7edb099abdb7'
-};
-CALIBRAGE_CONVOCATIONS_EMMA['convocation-debutante-5j-perso-kit-payant'] = {
-  ...CALIBRAGE_CONVOCATIONS_EMMA['convocation-debutante-5j-cpf'],
-  sha:'86a634f09a9b463fd16f022c71d3d7f4bec8ed29dd9f18b1aca7fe4c26f43398'
-};
-CALIBRAGE_CONVOCATIONS_EMMA['convocation-coaching-prive-2j-perso-kit-payant'] = {
-  ...CALIBRAGE_CONVOCATIONS_EMMA['convocation-coaching-prive-2j-perso'],
-  sha:'2156deb66aa153afb3bf8d0cdb5c464b1da33e9bbbd784e25b1407b4b7b5edfb'
-};
-
-// Les variantes payantes et le modèle de secours utilisent encore les PDF historiques.
-const CONVOCATION_SECOURS_EMMA = CALIBRAGE_CONVOCATIONS_EMMA['convocation-debutante-express-3j-perso'];
 const CONVOCATION_V3_CPF = {
   base:'documents/',
   pages:2,
@@ -2319,7 +2291,7 @@ function telechargerDocumentEmma(bytes, nom){
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-async function remplirConvocationEmma(pdfBytes, donnees){
+async function remplirConvocationEmma(pdfBytes, donnees, kitPayant=false){
   const c =
     CALIBRAGE_CONVOCATIONS_EMMA[donnees.modeleConvocation];
 
@@ -2442,6 +2414,25 @@ async function remplirConvocationEmma(pdfBytes, donnees){
     color:PDFLib.rgb(0,0,0)
   });
 
+  const positionKit={
+    'convocation-coaching-prive-2j-perso':240,
+    'convocation-debutante-express-3j-perso':254,
+    'convocation-debutante-4j-perso':240,
+    'convocation-debutante-5j-perso':226
+  }[donnees.modeleConvocation];
+  if(kitPayant && positionKit!==undefined){
+    const lignes=[
+      'Le kit pédagogique est à régler séparément.',
+      'Les modalités de règlement vous seront communiquées.'
+    ];
+    const police=await pdf.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    masquerDocumentEmma(page,[87,positionKit,509,positionKit+14]);
+    masquerDocumentEmma(page,[255,positionKit-12,338,positionKit]);
+    lignes.forEach((ligne,i)=>page.drawText(ligne,{
+      x:(page.getWidth()-police.widthOfTextAtSize(ligne,10))/2,
+      y:positionKit+4-i*11,size:10,font:police,color:PDFLib.rgb(.15,.15,.15)
+    }));
+  }
   return pdf.save();
 }
 
@@ -2470,7 +2461,7 @@ function donneesCertificatRealisationEmma(e){
   if(nomEtudianteFormation(e)==='Élève sans nom')throw Error('Complète le nom de l’élève dans sa fiche.');
   const extensions=['debutante-express-3j','debutante-4j','debutante-5j','coaching-prive-1j','coaching-prive-2j','coaching-prive-3j'].includes(type);
   const cpfExtensions=e.financement?.type==='cpf'&&extensions;
-  const competences=cpfExtensions?[
+  const competences=INFOS_FORMATIONS_PERSO[type]?.competences??(cpfExtensions?[
     "Analyser la demande du client et vérifier la faisabilité de la prestation, en tenant compte de ses attentes, de la morphologie de son regard et des éventuelles contre-indications.",
     "Présenter la solution technique adaptée, expliquer le déroulement et le résultat attendu, puis recueillir l’accord du client.",
     "Préparer le plateau technique en sélectionnant, en vérifiant et en organisant le matériel et les produits adaptés, dans le respect des règles d’hygiène et de sécurité.",
@@ -2494,8 +2485,8 @@ function donneesCertificatRealisationEmma(e){
     'Sélectionner le matériel et les produits adaptés à la prestation.',
     `Réaliser le protocole ${getLabelFormation(type)} dans le respect des règles d’hygiène.`,
     'Apporter les conseils d’entretien après la prestation.'
-  ];
-  return {nomComplet:nomEtudianteFormation(e),formation:getLabelFormation(type),dateDebut:dateSessionFormation(e.dateFormation),dateFin:dateSessionFormation(e.dateFinFormation),heures:Number(e.heuresRealisees??config.heures),dateDocument:dateLocaleISO(),competences:competences.join('\n'),certification:cpfExtensions?'Inscrite au Répertoire Spécifique n° RS 7814\nCertificateur Institut Laugier - Échéance certification 31/10/28':''};
+  ]);
+  return {nomComplet:nomEtudianteFormation(e),formation:getLabelFormation(type),dateDebut:dateSessionFormation(e.dateFormation),dateFin:dateSessionFormation(e.dateFinFormation),heures:Number(e.heuresRealisees??(type==='browlift'?6.5:config.heures)),dateDocument:dateLocaleISO(),competences:competences.join('\n'),certification:cpfExtensions?'Inscrite au Répertoire Spécifique n° RS 7814\nCertificateur Institut Laugier - Échéance certification 31/10/28':''};
 }
 function validerDonneesCertificatRealisationEmma(d){
   if(!texteDocumentEmma(d.nomComplet)||!texteDocumentEmma(d.formation)||!texteDocumentEmma(d.competences))throw Error('Complète le nom, la formation et les compétences.');
@@ -2588,8 +2579,8 @@ async function genererConvocationFormation(etudianteId){
       // Les formations sans modèle dédié reprennent la vraie convocation
       // Débutante Express 3J : logo, identité visuelle et pied de page officiels.
       const modeleReference='convocation-debutante-express-3j-perso';
-      const reference=CONVOCATION_SECOURS_EMMA;
-      const {pdf}=await chargerModeleEmma(modeleReference,reference.sha,2,'.pdf');
+      const reference=CALIBRAGE_CONVOCATIONS_EMMA[modeleReference];
+      const {pdf}=await chargerModeleEmma(modeleReference,reference.sha,2,'.pdf',reference.base);
       const [page,pageProgramme]=pdf.getPages();
       const normal=await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
       const gras=await pdf.embedFont(PDFLib.StandardFonts.HelveticaBold);
@@ -2598,6 +2589,7 @@ async function genererConvocationFormation(etudianteId){
       const blanc=PDFLib.rgb(1,1,1);
       const roseClair=PDFLib.rgb(.97,.72,.94);
       const infos=getInfosFormationPerso(eleve);
+      const kit=KITS_CONTENU[donnees.formationId==='lashlift-coreen'?'lashlift':donnees.formationId];
       const securiser=texte=>String(texte||'').replace(/[’‘]/g,"'").replace(/[–—]/g,'-').replace(/®/g,'(R)');
       const centrer=(p,texte,y,taille,police,couleur)=>{
         const propre=securiser(texte);p.drawText(propre,{x:(595-police.widthOfTextAtSize(propre,taille))/2,y,size:taille,font:police,color:couleur});
@@ -2618,10 +2610,10 @@ async function genererConvocationFormation(etudianteId){
 
       // Nettoyage du contenu propre à la formation 3J, en conservant le logo et les pieds de page.
       page.drawRectangle({x:40,y:112,width:515,height:575,color:blanc});
-      page.drawRectangle({x:300,y:700,width:255,height:125,color:blanc});
+      page.drawRectangle({x:221,y:685,width:334,height:77,color:blanc});
       pageProgramme.drawRectangle({x:40,y:105,width:515,height:720,color:blanc});
 
-      page.drawText('Le : '+new Date().toLocaleDateString('fr-FR'),{x:390,y:748,size:10,font:gras,color:noir});
+      page.drawText('Le : '+dateDocumentEmma(donnees.dateDocument,'Date').texte,{x:390,y:748,size:10,font:gras,color:noir});
       centrer(page,'CONVOCATION',632,17,gras,rose);
       centrer(page,'Formation « '+donnees.formationLabel+' »',610,12,gras,rose);
       centrer(page,'Bienvenue '+(donnees.prenom||donnees.nomComplet)+' !',580,13,gras,rose);
@@ -2629,20 +2621,29 @@ async function genererConvocationFormation(etudianteId){
 
       let y=535;
       page.drawText('VOTRE SESSION', {x:48,y,size:12,font:gras,color:noir});y-=23;
-      y=paragraphes(page,'Dates : du '+donnees.dateDebut+' au '+donnees.dateFin+'\nHoraires : '+infos.horaires+'\nLieu : '+(donnees.lieu||'LIMAGE SCHOOL'),48,y,495,10.5,normal,noir,15)-4;
-      page.drawText('EXERCICES ET MODELES', {x:48,y,size:12,font:gras,color:noir});y-=22;
-      y=paragraphes(page,infos.modeles+' La prestation modèle est gratuite.',48,y,495,10.5,normal,noir,15)-5;
+      y=paragraphes(page,(donnees.dateDebut===donnees.dateFin?'Date : '+donnees.dateDebut:'Dates : du '+donnees.dateDebut+' au '+donnees.dateFin)+'\nHoraires : '+infos.horaires+'\nLieu : '+(donnees.lieu||'LIMAGE SCHOOL'),48,y,495,10.5,normal,noir,15)-4;
+      page.drawText('EXERCICES ET MODÈLES', {x:48,y,size:12,font:gras,color:noir});y-=22;
+      y=paragraphes(page,infos.modeles,48,y,495,10.5,normal,noir,15)-5;
       const texteGiulia='Si vous venez de loin ou ne pouvez pas amener vos modèles, nous pouvons nous charger de les trouver. Giulia vous contactera pour organiser leur planning.';
       page.drawRectangle({x:48,y:y-60,width:499,height:70,color:roseClair});
       paragraphes(page,texteGiulia,65,y-12,465,9.5,gras,noir,13);y-=88;
-      page.drawText('KIT PEDAGOGIQUE', {x:48,y,size:12,font:gras,color:noir});y-=22;
-      y=paragraphes(page,eleve.financement?.kitOffert===false?'Votre kit pédagogique n’est pas offert. Son achat est à votre charge ; les modalités de règlement vous seront communiquées.':'Dans le cadre de votre financement personnel, votre kit pédagogique est offert et vous sera remis pendant la formation.',48,y,495,10.5,normal,noir,15)-5;
+      page.drawText('KIT PÉDAGOGIQUE', {x:48,y,size:12,font:gras,color:noir});y-=22;
+      const payant=eleve.financement?.kitOffert===false;
+      const mentionKit=payant
+        ? (kit ? 'Le kit pédagogique est à régler séparément ('+kit.prix+' €). Les modalités de règlement vous seront communiquées.' : 'Le kit pédagogique est à régler séparément. Les modalités de règlement vous seront communiquées.')
+        : (donnees.formationId==='lashlift-coreen' ? 'Le kit pédagogique est inclus hors promotion.' : 'Votre kit pédagogique est offert et vous sera remis pendant la formation.');
+      y=paragraphes(page,mentionKit,48,y,495,10.5,normal,noir,15)-5;
       page.drawText('INFORMATIONS PRATIQUES', {x:48,y,size:12,font:gras,color:noir});y-=22;
       paragraphes(page,'Le petit-déjeuner et le goûter sont offerts. Merci de prévoir votre déjeuner ; un réfrigérateur et un micro-ondes sont disponibles sur place.',48,y,495,10.5,normal,noir,15);
 
       centrer(pageProgramme,'Formation : « '+donnees.formationLabel+' »',750,14,gras,rose);
-      centrer(pageProgramme,'PROGRAMME ET DEROULE',720,13,gras,noir);
-      paragraphes(pageProgramme,infos.programme,55,685,485,11,normal,noir,17);
+      centrer(pageProgramme,'PROGRAMME ET DÉROULÉ',720,13,gras,noir);
+      const finProgramme=paragraphes(pageProgramme,infos.programme,55,685,485,11,normal,noir,17);
+      if(kit){
+        pageProgramme.drawText('CONTENU DU KIT', {x:55,y:finProgramme-18,size:12,font:gras,color:noir});
+        const finKit=paragraphes(pageProgramme,kit.items.map(item=>'- '+item).join('\n'),55,finProgramme-40,485,10.5,normal,noir,12);
+        if(finKit<220)throw Error('Le contenu du kit dépasse la zone disponible.');
+      }
       centrer(pageProgramme,'Remise de votre attestation en fin de session.',190,13,gras,rose);
       const resultat=await pdf.save();
       telechargerDocumentEmma(resultat,'Convocation-'+(donnees.nomComplet||donnees.prenom)+'-'+donnees.formationId+'.pdf');
@@ -2655,7 +2656,7 @@ async function genererConvocationFormation(etudianteId){
     );
 
     const resultat = await remplirConvocationEmma(
-      bytes,donnees
+      bytes,donnees,eleve.financement?.type==='perso'&&eleve.financement?.kitOffert===false
     );
 
     telechargerDocumentEmma(
@@ -4004,19 +4005,39 @@ const INFOS_FORMATIONS_PERSO={
     modeles:'3 modèles : mercredi à 14h30, jeudi à 10h30 et à 14h30.'
   },
   'lashlift-coreen':{
-    horaires:'1 journée, de 10h00 à 17h00',
-    programme:'Démonstration, pratique du Lashlift coréen, création de la grille tarifaire, photos/vidéos avant-après et remise du fascicule papier.',
-    modeles:'2 modèles : à 14h30 et à 15h30.'
+    "horaires": "1 journée, de 10h à 17h. Groupe de 4 personnes maximum.",
+    "modeles": "1 modèle pour la démonstration, puis 1 à 2 modèles d’entraînement selon vos aptitudes.",
+    "programme": "Observer la démonstration du Lashlift coréen, puis s’entraîner sur un ou deux modèles selon ses aptitudes.\nConstruire une grille tarifaire sur mesure.\nFilmer les résultats, réaliser des avant/après et utiliser des outils de montage.\nRemise du fascicule papier et d’un certificat à l’issue de la formation.",
+    "competences": [
+      "Observer et repérer les étapes du protocole de Lashlift coréen.",
+      "Réaliser la prestation sur modèle et contrôler le résultat obtenu.",
+      "Construire une grille tarifaire adaptée à son activité.",
+      "Documenter le résultat avec des avant/après et réaliser un montage vidéo."
+    ]
   },
   'browlift':{
-    horaires:'1 journée, de 10h30 à 17h30, avec 30 minutes de pause déjeuner',
-    programme:'Théorie, hygiène, analyse du sourcil, démonstration puis pratique complète du Browlift sur modèle.',
-    modeles:'1 modèle à 14h30.'
+    "horaires": "1 journée, de 10h30 à 17h30, avec 30 minutes de pause déjeuner.",
+    "modeles": "1 modèle pour la pratique.",
+    "programme": "Formation en collaboration avec Le Studio du Sourcil, animé par Delphine Limage.\nThéorie : anatomie, choix des produits, hygiène et notions de colorimétrie si abordées.\nDémonstration puis pratique : analyser la morphologie, corriger les asymétries, restructurer la ligne et réaliser le Browlift de la préparation à la finition, dans le respect du sourcil naturel et de la sécurité de la cliente.\nDévelopper une prestation Browlift à intégrer à sa carte. Un livret est remis et un suivi post-formation est proposé sur WhatsApp ou en groupe privé.",
+    "competences": [
+      "Analyser la morphologie du visage et identifier les asymétries du sourcil.",
+      "Adapter et restructurer la ligne du sourcil selon les traits du visage.",
+      "Choisir les produits et préparer le poste en respectant les règles d’hygiène et de sécurité.",
+      "Réaliser un Browlift sur modèle, de la préparation à la finition, pour obtenir un résultat lifté, harmonieux et naturel.",
+      "Présenter la prestation Browlift et l’intégrer à sa carte."
+    ]
   },
   'lashup':{
-    horaires:'1 journée, de 9h30 à 15h30',
-    programme:"Protocole LASH UP’ complet : rehaussement, technique du baume, teinture, soin, hygiène, diagnostic, tarification, rentabilité et création de contenu.",
-    modeles:'2 modèles : à 13h00 et à 15h00.'
+    "horaires": "1 journée, de 9h30 à 15h30. Petit groupe de 5 personnes maximum.",
+    "modeles": "2 modèles d’entraînement, prévus à 13h et à 15h.",
+    "programme": "Diagnostic : analyser les cils naturels, adapter le protocole à la cliente et préparer le poste dans le respect de l’hygiène, de la désinfection et de la sécurité.\nTechnique : appliquer le baume, réaliser le rehaussement, maîtriser les temps de pose, puis effectuer la teinture et le soin. Contrôler le résultat, éviter les erreurs courantes et transmettre les conseils d’entretien.\nBusiness : calculer et valoriser le prix, présenter la prestation et l’intégrer à sa carte de soins.\nCréation de contenu : photographier et filmer les avant/après, puis mettre en valeur le résultat sur Instagram et TikTok.",
+    "competences": [
+      "Analyser les cils naturels et adapter le protocole à la cliente.",
+      "Préparer et désinfecter le poste de travail, accueillir et installer la cliente.",
+      "Réaliser le protocole Lash Up’ : technique du baume, rehaussement, teinture et soin, avec maîtrise des temps de pose.",
+      "Contrôler la régularité du résultat et transmettre les conseils d’entretien.",
+      "Construire un tarif et présenter la prestation avec des photos et vidéos avant/après."
+    ]
   },
   'coaching-prive-1j':{
     horaires:'1 journée, de 9h30 à 17h30, avec 1h de pause déjeuner',
