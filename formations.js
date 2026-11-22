@@ -2469,7 +2469,16 @@ function donneesCertificatRealisationEmma(e){
   if(!config)throw Error('Complète la formation et son financement dans la fiche élève.');
   if(nomEtudianteFormation(e)==='Élève sans nom')throw Error('Complète le nom de l’élève dans sa fiche.');
   const extensions=['debutante-express-3j','debutante-4j','debutante-5j','coaching-prive-1j','coaching-prive-2j','coaching-prive-3j'].includes(type);
-  const competences=extensions?[
+  const cpfExtensions=e.financement?.type==='cpf'&&extensions;
+  const competences=cpfExtensions?[
+    "Analyser la demande du client et vérifier la faisabilité de la prestation, en tenant compte de ses attentes, de la morphologie de son regard et des éventuelles contre-indications.",
+    "Présenter la solution technique adaptée, expliquer le déroulement et le résultat attendu, puis recueillir l’accord du client.",
+    "Préparer le plateau technique en sélectionnant, en vérifiant et en organisant le matériel et les produits adaptés, dans le respect des règles d’hygiène et de sécurité.",
+    "Réaliser une pose d’extensions de cils dans le respect du protocole, de la préparation des cils naturels au contrôle du résultat.",
+    "Effectuer la dépose des extensions de cils en protégeant les cils naturels et la zone oculaire.",
+    "Réaliser un rehaussement de cils et/ou de sourcils dans le respect du protocole adapté à la prestation.",
+    "Donner au client les conseils d’entretien et les précautions à suivre après la prestation, puis vérifier sa compréhension."
+]:extensions?[
     'Définir la faisabilité de l’intensification du regard par la pose d’extensions ou le rehaussement de cils.',
     'Présenter la solution technique retenue pour intensifier le regard.',
     'Sélectionner le matériel et les produits adaptés aux objectifs de la séance.',
@@ -2486,7 +2495,7 @@ function donneesCertificatRealisationEmma(e){
     `Réaliser le protocole ${getLabelFormation(type)} dans le respect des règles d’hygiène.`,
     'Apporter les conseils d’entretien après la prestation.'
   ];
-  return {nomComplet:nomEtudianteFormation(e),formation:getLabelFormation(type),dateDebut:dateSessionFormation(e.dateFormation),dateFin:dateSessionFormation(e.dateFinFormation),heures:Number(e.heuresRealisees??config.heures),dateDocument:dateLocaleISO(),competences:competences.join('\n'),certification:e.financement?.type==='cpf'&&extensions?'Inscrite au Répertoire Spécifique n° RS 6861\nCertificateur Institut Laugier - Échéance certification 31/10/26':''};
+  return {nomComplet:nomEtudianteFormation(e),formation:getLabelFormation(type),dateDebut:dateSessionFormation(e.dateFormation),dateFin:dateSessionFormation(e.dateFinFormation),heures:Number(e.heuresRealisees??config.heures),dateDocument:dateLocaleISO(),competences:competences.join('\n'),certification:cpfExtensions?'Inscrite au Répertoire Spécifique n° RS 7814\nCertificateur Institut Laugier - Échéance certification 31/10/28':''};
 }
 function validerDonneesCertificatRealisationEmma(d){
   if(!texteDocumentEmma(d.nomComplet)||!texteDocumentEmma(d.formation)||!texteDocumentEmma(d.competences))throw Error('Complète le nom, la formation et les compétences.');
@@ -2517,7 +2526,9 @@ async function remplirCertificatRealisationEmma(pdfBytes,d){
     return resultat;
   }
   const dessiner=(t,x,y,size=10,police=font,color=noir)=>page.drawText(propre(t),{x,y,size,font:police,color});
-  // Le modèle conserve son logo, les mentions fixes, le pied de page et la signature ; le corps variable est vide.
+  // Le modèle V4 contient un exemple complet dans la zone personnalisée.
+  masquerDocumentEmma(page,[69,255,525,612]);
+  masquerDocumentEmma(page,[89,139,150,152]);
   let taille=10,corps;
   do{
     corps=[
@@ -2528,13 +2539,13 @@ async function remplirCertificatRealisationEmma(pdfBytes,d){
       {t:'Cette formation lui a permis d’acquérir les compétences suivantes :'},
       ...d.competences.split('\n').filter(t=>t.trim()).flatMap(t=>lignes('- '+t.replace(/^[-•]\s*/,''),450,taille).map(t=>({t})))
     ];
-    if(corps.length*(taille+3)<=255)break;
+    if(corps.length*(taille+3)<=340)break;
     taille-=.5;
   }while(taille>=8);
   if(taille<8)throw Error('Le texte des compétences est trop long. Raccourcis-le avant de générer le PDF.');
   let y=601;
   for(const ligne of corps){if(!ligne.espace)dessiner(ligne.t,71,y,ligne.size||taille,ligne.font||font,ligne.color||noir);y-=taille+3;}
-  dessiner(dates.emission,106,239.142);
+  dessiner(dates.emission,91,143);
   return pdf.save();
 }
 function genererCertificatRealisationFormation(etudianteId){
@@ -2553,7 +2564,7 @@ function genererCertificatRealisationFormation(etudianteId){
     try{
       const valeurs=Object.fromEntries([...fenetre.querySelectorAll('[data-champ]')].map(champ=>[champ.dataset.champ,champ.value]));valeurs.heures=Number(valeurs.heures);
       validerDonneesCertificatRealisationEmma(valeurs);
-      const {bytes}=await chargerModeleEmma('certificat-realisation','65b09835cb66b074e379ab1436676745fe8d4023e86a7ade48362b7b1090daf5',1,'.pdf');
+      const {bytes}=await chargerModeleEmma('certificat-realisation','d176210688a6d5196ca3fec914a9c9f71991fbb42af7874e72b8e80577c233d7',1,'.pdf','documents/');
       const rempli=await remplirCertificatRealisationEmma(bytes,valeurs);
       telechargerDocumentEmma(rempli,'Certificat-realisation-'+valeurs.nomComplet+'.pdf');
       const suivi=await validerDocumentGenereFormation(etudianteId,'certificat_realisation_cree');fenetre.close();fenetre.remove();if(suivi)toast('✓ Certificat téléchargé et suivi enregistré.');
