@@ -4181,30 +4181,35 @@ Si vous avez la moindre question en remplissant les documents, n’hésitez pas 
     workflow:true,
     label:"Mail de bienvenue",
     etape:'mail_validation_perso_envoye',
-    sujet:'Bienvenue chez LIMAGE SCHOOL – Votre inscription et votre convocation',
-    corps:(e,d,kit)=>{const infos=getInfosFormationPerso(e);return `Bonjour ${d.prenom},
+    sujet:'Votre inscription est confirmée | LIMAGE SCHOOL',
+    corps:(e,d,kit)=>{
+      const {modeles}=getInfosFormationPerso(e);
+      const dates=d.debut===d.fin ? `le ${d.debut}` : `du ${d.debut} au ${d.fin}`;
+      const kitModalites=kit.payant
+        ? 'Merci de prévoir le règlement de votre kit séparément avant la formation.'
+        : 'Nous préparerons votre kit pour que vous puissiez le récupérer le jour de la formation.';
+      return `Bonjour ${d.prenom},
 
-Félicitations pour votre inscription à la formation ${d.formation}, prévue du ${d.debut} au ${d.fin} ! Nous avons hâte de vous accueillir.
+Félicitations pour votre inscription à la formation ${d.formation} ! Nous avons hâte de vous accueillir à la LIMAGE SCHOOL ${dates}. 🤍
 
-Horaires : ${infos.horaires}.
+Vous trouverez en pièce jointe votre convocation, avec les horaires, l’adresse et le déroulé de la formation, ainsi que nos conditions générales de vente.
 
-Déroulé de la formation :
-${infos.programme}
+Votre kit de formation
+${kit.texte}
 
-Organisation des modèles :
-${infos.modeles}
-Si vous venez de loin ou ne pouvez pas amener vos modèles, nous pouvons nous charger de les trouver. Giulia est en charge de leur planning et vous accompagnera dans l’organisation.
+${kitModalites}
 
-${kit.texte}${kit.payant?'\nMerci de prévoir le règlement de votre kit avant la formation.':'\nNous préparerons votre kit pour votre venue.'}
+Les modèles pour la pratique
+${modeles}
+Si vous avez besoin d’aide pour trouver vos modèles, dites-le-nous. Giulia pourra vous accompagner dans l’organisation.
 
-Le petit-déjeuner et le goûter sont offerts. Merci de prévoir votre déjeuner ; un réfrigérateur et un micro-ondes sont à votre disposition sur place.
+Le petit-déjeuner et le goûter sont prévus. Pour le midi, pensez à apporter votre déjeuner. Un réfrigérateur et un micro-ondes seront à votre disposition sur place.
 
-Vous trouverez en pièces jointes votre convocation et les conditions générales de vente. Merci de les lire avant votre venue.
-
-Si vous avez la moindre question, écrivez-nous : nous sommes là pour vous aider.
+Si vous avez une question d’ici là, vous pouvez simplement répondre à ce mail.
 
 À très bientôt,
-L’équipe LIMAGE SCHOOL`;}
+Emma – LIMAGE SCHOOL`;
+    }
   },
 
   'kit-cpf':{
