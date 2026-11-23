@@ -957,7 +957,7 @@ function renderFicheEtudianteFormation(e,today){
           margin-bottom:3px;
         "
       >
-        ⏳ En attente de l'élève · ${prochaine.etape}
+        ⏳ En attente · ${prochaine.etape}
       </div>
 
       <strong>
@@ -3664,7 +3664,6 @@ const ETAPES_DOSSIER_FORMATION_CPF=[
     {id:'cni_recue',label:"CNI recto / verso reçue",type:'attente'}
   ]},
   {id:'contrat',titre:'2 · Dossier contractuel',items:[
-    {id:'convocation_creee',label:'Convocation créée',action:'Créer la convocation',type:'action'},
     {id:'contrat_cree',label:'Contrat créé',action:'Créer le contrat',type:'action'},
     {id:'programme_prepare',label:'Programme prêt',type:'action'},
     {id:'cgv_preparees',label:'CGV prêtes',type:'action'},
@@ -3672,7 +3671,8 @@ const ETAPES_DOSSIER_FORMATION_CPF=[
     {id:'rib_envoye',label:'RIB prêt à joindre',type:'action'},
     {id:'hotels_prepares',label:'Liste des hôtels prête',type:'action'},
     {id:'dossier_contractuel_envoye',label:'Mail contrat et documents envoyé',action:'Envoyer le dossier contractuel',type:'action'},
-    {id:'contrat_signe',label:'Contrat signé reçu',type:'attente'},
+    {id:'contrat_signe',label:'Contrat signé reçu',attente:'le contrat signé',type:'attente'},
+    {id:'convocation_creee',label:'Convocation créée',action:'Créer la convocation',type:'action'},
     {id:'kit_demande',label:'Choix du kit demandé',type:'action'},
     {id:'kit_choisi',label:'Kit choisi',type:'attente'},
     {id:'kit_paye',label:'Kit payé',type:'attente'},
@@ -3709,11 +3709,11 @@ const ETAPES_DOSSIER_FORMATION_PERSO=[
   {id:'inscription',titre:'1 · Inscription',items:[
     {id:'fiche_creee',label:'Fiche élève créée',type:'action'},
     {id:'convocation_creee',label:'Convocation créée',action:'Créer la convocation',type:'action'},
-    {id:'cgv_preparees',label:'CGV prêtes à joindre',type:'action'},
-    {id:'mail_validation_perso_envoye',label:'Mail de validation envoyé avec convocation + CGV',action:'Préparer le mail de validation',type:'action'}
+    {id:'mail_validation_perso_envoye',label:'Mail de bienvenue envoyé avec la convocation et les CGV',action:'Préparer le mail de bienvenue',type:'action'}
   ]},
   {id:'kit',titre:'2 · Préparation',items:[
-    {id:'kit_prepare',label:'Kit offert préparé',action:'Préparer le kit',type:'action'}
+    {id:'kit_paye',label:'Kit payé',attente:'le paiement du kit',type:'attente'},
+    {id:'kit_prepare',label:'Kit préparé',action:'Préparer le kit',type:'action'}
   ]},
   {id:'termine',titre:'3 · Terminé',items:[
     {id:'certificat_realisation_cree',label:'Certificat de réalisation créé',action:'Créer le certificat de réalisation',type:'action'},
@@ -3725,7 +3725,11 @@ const ETAPES_DOSSIER_FORMATION_PERSO=[
 const ETAPES_DOSSIER_FORMATION=[...ETAPES_DOSSIER_FORMATION_CPF,...ETAPES_DOSSIER_FORMATION_PERSO];
 
 function getEtapesDossierFormation(e){
-  return e?.financement?.type==='cpf' ? ETAPES_DOSSIER_FORMATION_CPF : ETAPES_DOSSIER_FORMATION_PERSO;
+  if(e?.financement?.type==='cpf') return ETAPES_DOSSIER_FORMATION_CPF;
+  if(e?.financement?.kitOffert===false) return ETAPES_DOSSIER_FORMATION_PERSO;
+  return ETAPES_DOSSIER_FORMATION_PERSO.map(etape=>etape.id==='kit'
+    ? {...etape,items:etape.items.filter(item=>item.id!=='kit_paye')}
+    : etape);
 }
 
 
@@ -3803,11 +3807,14 @@ function getProchaineActionFormation(e){
       !(['certificat_realisation_cree','certificat_realisation_envoye'].includes(element.id)&&!formationTermineeCertificatEmma(e)) &&
       !(element.id==='cni_recue'&&!suivi.dossier_contractuel_envoye)
     );
+    if(etape.id==='termine' && !suivi.certificat_realisation_envoye && !formationTermineeCertificatEmma(e)){
+      return {etape:etape.titre,id:null,type:'attente',label:'En attente : la fin de la formation'};
+    }
     if(item) return {
       etape:etape.titre,
       id:item.id,
       type:item.type||'action',
-      label:item.type==='attente' ? 'En attente : '+item.label : (item.action||item.label)
+      label:item.type==='attente' ? 'En attente : '+(item.attente||item.label) : (item.action||item.label)
     };
   }
 
@@ -4172,12 +4179,12 @@ Si vous avez la moindre question en remplissant les documents, n’hésitez pas 
 
   'validation-perso':{
     workflow:true,
-    label:"Mail de validation d’inscription",
+    label:"Mail de bienvenue",
     etape:'mail_validation_perso_envoye',
-    sujet:'Validation de votre inscription – Formation LIMAGECILS',
+    sujet:'Bienvenue chez LIMAGE SCHOOL – Votre inscription et votre convocation',
     corps:(e,d,kit)=>{const infos=getInfosFormationPerso(e);return `Bonjour ${d.prenom},
 
-Votre inscription à la formation ${d.formation}, prévue du ${d.debut} au ${d.fin}, est bien enregistrée. Nous avons hâte de vous accueillir !
+Félicitations pour votre inscription à la formation ${d.formation}, prévue du ${d.debut} au ${d.fin} ! Nous avons hâte de vous accueillir.
 
 Horaires : ${infos.horaires}.
 
@@ -4188,7 +4195,7 @@ Organisation des modèles :
 ${infos.modeles}
 Si vous venez de loin ou ne pouvez pas amener vos modèles, nous pouvons nous charger de les trouver. Giulia est en charge de leur planning et vous accompagnera dans l’organisation.
 
-${kit.payant?'Votre kit pédagogique n’est pas offert. '+kit.texte+' Merci de prévoir son règlement avant la formation.':'Votre kit pédagogique est offert et sera préparé pour votre venue.'}
+${kit.texte}${kit.payant?'\nMerci de prévoir le règlement de votre kit avant la formation.':'\nNous préparerons votre kit pour votre venue.'}
 
 Le petit-déjeuner et le goûter sont offerts. Merci de prévoir votre déjeuner ; un réfrigérateur et un micro-ondes sont à votre disposition sur place.
 
@@ -4330,7 +4337,7 @@ function construireMailFormation(e,type){
 function boutonsMailsFormation(e){
   const types=e.financement?.type==='cpf'?['candidature','contrat','convocation']:['validation-perso'];
   if(formationTermineeCertificatEmma(e))types.push('fin-formation');
-  return `<div class="f-mail-buttons" aria-label="Mails de l’élève">${types.map(type=>`<button type="button" class="btn bg bsm" data-eleve="${encodeURIComponent(e.id)}" onclick="ouvrirMailFormation(decodeURIComponent(this.dataset.eleve),'${type}')">${type==='validation-perso'?"Préparer le mail de validation":type==='fin-formation'?'Préparer le mail de fin':'Préparer mail '+type}</button>`).join('')}</div>`;
+  return `<div class="f-mail-buttons" aria-label="Mails de l’élève">${types.map(type=>`<button type="button" class="btn bg bsm" data-eleve="${encodeURIComponent(e.id)}" onclick="ouvrirMailFormation(decodeURIComponent(this.dataset.eleve),'${type}')">${type==='validation-perso'?"Préparer le mail de bienvenue":type==='fin-formation'?'Préparer le mail de fin':'Préparer mail '+type}</button>`).join('')}</div>`;
 }
 
 function ouvrirMailFormation(etudianteId,type){
@@ -4344,7 +4351,7 @@ function ouvrirMailFormation(etudianteId,type){
   const fenetre=document.createElement('dialog');
   fenetre.id='mailFormationModal';
   fenetre.setAttribute('aria-labelledby','mailFormationTitre');
-  fenetre.innerHTML=`<div class="f-mail-header"><h2 id="mailFormationTitre">${type==='fin-formation'?'Mail de fin de formation':'Préparer mail '+esc(type)}</h2><button type="button" class="btn bg bsm" data-fermer aria-label="Fermer le mail">✕</button></div>
+  fenetre.innerHTML=`<div class="f-mail-header"><h2 id="mailFormationTitre">${esc(EMAIL_TEMPLATES[type].label)}</h2><button type="button" class="btn bg bsm" data-fermer aria-label="Fermer le mail">✕</button></div>
     <p>${esc(nomEtudianteFormation(e))}</p>
     <div class="fr"><label for="mailFormationAdresse">À</label><input id="mailFormationAdresse" type="email" value="${esc(mail.adresse)}" placeholder="Adresse email de l’élève" autocomplete="off"></div>
     ${!mail.adresse?'<p class="f-mail-warning">Email manquant : tu peux le saisir ici pour ce brouillon, ou compléter la fiche élève.</p>':''}
